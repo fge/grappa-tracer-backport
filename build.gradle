@@ -20,8 +20,8 @@ apply(plugin: "propdeps-eclipse");
 
 
 group = "com.github.fge";
-description = "A backport of the trace parser for grappa 1.0.x";
-version = "1.0.0-SNAPSHOT";
+description = "A backport of the trace parser for grappa 1.0.x/parboiled1";
+version = "1.0.0";
 sourceCompatibility = "1.7";
 targetCompatibility = "1.7"; // defaults to sourceCompatibility
 
