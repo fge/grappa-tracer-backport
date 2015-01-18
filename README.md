@@ -5,6 +5,15 @@ file LICENSE for more details.
 
 Requires Java 7 or better.
 
+The current version is **1.0.0**:
+
+```groovy
+dependencies {
+    compile(group: "com.github.fge", name: "grappa-tracer-backport",
+        version: "1.0.0");
+}
+```
+
 ## What is it
 
 This is a backport of the event-listening parse runner in grappa 2.0.x for
