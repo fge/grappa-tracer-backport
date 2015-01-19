@@ -25,6 +25,9 @@ debugger](https://github.com/fge/grappa-debugger).
 
 ## Usage
 
+An important precision first: **you do NOT need to annotate your parser with
+`@BuildParseTree` in order for this tracing parser to work**.
+
 You need a path to a zip file, which must **not** exist prior to running the
 parser. In the example below:
 
