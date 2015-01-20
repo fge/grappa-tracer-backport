@@ -46,6 +46,7 @@ final TracingParseRunnerListener<String> listener
 final ParseRunner<String> runner
     = new EventBasedParseRunner(parser.theRule());
 
+runner.registerListener(listener);
 runner.run(someInput);
 ```
 
