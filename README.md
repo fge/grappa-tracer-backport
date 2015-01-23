@@ -42,7 +42,7 @@ final MyParser parser = Parboiled.createParser(MyParser.class);
 
 final String zipPath = "/tmp/trace.zip";
 final TracingParseRunnerListener<String> listener
-    = new TracingParseRunner<>(zipPath);
+    = new TracingParseRunnerListener<>(zipPath);
 final ParseRunner<String> runner
     = new EventBasedParseRunner(parser.theRule());
 
