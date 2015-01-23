@@ -22,8 +22,10 @@ apply(plugin: "propdeps-eclipse");
 group = "com.github.fge";
 description = "A backport of the trace parser for grappa 1.0.x/parboiled1";
 version = "1.0.0";
-sourceCompatibility = "1.7";
-targetCompatibility = "1.7"; // defaults to sourceCompatibility
+
+def javaVersion = JavaVersion.VERSION_1_7;
+sourceCompatibility = javaVersion;
+targetCompatibility = javaVersion; // defaults to sourceCompatibility
 
 
 repositories {
@@ -45,6 +47,15 @@ test {
         useDefaultListeners = true;
     };
 }
+
+task enforceVersion << {
+    def foundVersion = JavaVersion.current();
+    if (foundVersion != javaVersion)
+        throw new IllegalStateException("Wrong Java version; required is "
+            + javaVersion + ", but found " + foundVersion);
+}
+
+compileJava.dependsOn(enforceVersion);
 
 /*
  * Necessary to generate the source and javadoc jars
