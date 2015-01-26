@@ -16,26 +16,40 @@
 
 package com.github.parboiled1.grappa.backport;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonGenerator.Feature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.parboiled.MatcherContext;
 import org.parboiled.annotations.BuildParseTree;
 import org.parboiled.buffers.InputBuffer;
+import org.parboiled.matchers.Matcher;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.io.BufferedWriter;
+import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Tracing parse runner listener
@@ -82,104 +96,229 @@ import java.util.Map;
 public final class TracingParseRunnerListener<V>
     extends ParseRunnerListener<V>
 {
+    private static final ThreadFactory THREAD_FACTORY
+        = new ThreadFactoryBuilder().setDaemon(true)
+        .setNameFormat("event-writer-%d").build();
+
     private static final Map<String, ?> ZIPFS_ENV
         = Collections.singletonMap("create", "true");
+
+    private static final TraceEvent END_EVENT
+        = new TraceEvent(TraceEventType.BEFORE_MATCH, -1L, 0, "", "",
+        MatcherType.ACTION, "", -1);
+
     /*
-     * We have to do that, otherwise a corrupt zip file is created :(
-     *
-     * See https://github.com/FasterXML/jackson-databind/issues/680
+     * We have to do that, since we write to a temporary file
      */
     private static final ObjectMapper MAPPER = new ObjectMapper()
         .disable(Feature.AUTO_CLOSE_TARGET);
+    private static final int BUFSIZE = 16384;
 
-    private final URI zipUri;
-    private final List<TraceEvent> events = new ArrayList<>();
+    private final MatcherTypeProvider typeProvider;
 
-    private InputBuffer buffer;
+    private final ExecutorService executor;
+    private final Future<Closeable> future;
+    private final BlockingQueue<TraceEvent> eventQueue
+        = new LinkedBlockingQueue<>();
+
+    private final Path traceFile;
+    private final BufferedWriter traceWriter;
+    private final Path zipPath;
+    private final JsonGenerator generator;
+
+    private InputBuffer inputBuffer;
     private long startDate;
+
+    public TracingParseRunnerListener(final Path zipPath,
+        final MatcherTypeProvider typeProvider)
+    {
+        this.typeProvider = Objects.requireNonNull(typeProvider);
+        Objects.requireNonNull(zipPath);
+
+        if (Files.exists(zipPath, LinkOption.NOFOLLOW_LINKS))
+            throw new RuntimeException("file " + zipPath + " already exists");
+
+        this.zipPath = zipPath;
+
+        try {
+            traceFile = Files.createTempFile("trace", ".json");
+            traceWriter = Files.newBufferedWriter(traceFile, UTF_8);
+            generator = MAPPER.getFactory().createGenerator(traceWriter);
+        } catch (IOException e) {
+            throw new RuntimeException("failed to initialize trace", e);
+        }
+
+        executor = Executors.newSingleThreadExecutor(THREAD_FACTORY);
+        future = executor.submit(new EventWriter(generator, eventQueue));
+    }
+
+    public TracingParseRunnerListener(final Path zipPath)
+    {
+        this(zipPath, new MatcherTypeProvider());
+    }
 
     public TracingParseRunnerListener(final String zipPath)
     {
-        final Path path = Paths.get(zipPath);
-        if (Files.exists(path, LinkOption.NOFOLLOW_LINKS))
-            throw new RuntimeException("path " + zipPath + "already exists");
-        zipUri = URI.create("jar:" + path.toUri());
+        this(Paths.get(zipPath), new MatcherTypeProvider());
+    }
+
+    public TracingParseRunnerListener(final File file)
+    {
+        this(file.toPath(), new MatcherTypeProvider());
     }
 
     @Override
     public void beforeParse(final PreParseEvent<V> event)
     {
-        buffer = event.getContext().getInputBuffer();
+        inputBuffer = event.getContext().getInputBuffer();
         startDate = System.currentTimeMillis();
     }
 
     @Override
     public void beforeMatch(final PreMatchEvent<V> event)
     {
-        final TraceEvent traceEvent = TraceEvent.before(event.getContext());
-        events.add(traceEvent);
-        traceEvent.setNanoseconds(System.nanoTime());
+        final MatcherContext<V> context = event.getContext();
+        final Class<? extends Matcher> c = context.getMatcher().getClass();
+        final MatcherType type = typeProvider.getType(c);
+        final TraceEvent traceEvent = TraceEvent.before(context, type);
+        final long nanoseconds = System.nanoTime();
+        traceEvent.setNanoseconds(nanoseconds);
+        eventQueue.offer(traceEvent);
     }
 
     @Override
     public void matchSuccess(final MatchSuccessEvent<V> event)
     {
         final long nanos = System.nanoTime();
-        final TraceEvent traceEvent = TraceEvent.success(event.getContext());
+        final MatcherContext<V> context = event.getContext();
+        final Class<? extends Matcher> c = context.getMatcher().getClass();
+        final MatcherType type = typeProvider.getType(c);
+        final TraceEvent traceEvent = TraceEvent.success(context, type);
         traceEvent.setNanoseconds(nanos);
-        events.add(traceEvent);
+        eventQueue.offer(traceEvent);
     }
 
     @Override
     public void matchFailure(final MatchFailureEvent<V> event)
     {
         final long nanos = System.nanoTime();
-        final TraceEvent traceEvent = TraceEvent.failure(event.getContext());
+        final MatcherContext<V> context = event.getContext();
+        final Class<? extends Matcher> c = context.getMatcher().getClass();
+        final MatcherType type = typeProvider.getType(c);
+        final TraceEvent traceEvent = TraceEvent.failure(context, type);
         traceEvent.setNanoseconds(nanos);
-        events.add(traceEvent);
+        eventQueue.offer(traceEvent);
     }
 
     @Override
     public void afterParse(final PostParseEvent<V> event)
     {
+        eventQueue.offer(END_EVENT);
+
         try (
-            final FileSystem zipfs
-                = FileSystems.newFileSystem(zipUri, ZIPFS_ENV);
+            final Closeable gen = future.get();
         ) {
-            final ParsingRunTrace trace
-                = new ParsingRunTrace(startDate, events);
-            writeInputText(zipfs);
-            writeTrace(zipfs, trace);
+            traceWriter.flush();
+            executor.shutdown();
+        } catch (InterruptedException | ExecutionException | IOException e) {
+            throw new RuntimeException("failed to generate trace file", e);
+        }
+
+        final ParseRunInfo runInfo = new ParseRunInfo(startDate, inputBuffer);
+        final URI uri = URI.create("jar:" + zipPath.toUri());
+
+        try (
+            final FileSystem zipfs = FileSystems.newFileSystem(uri, ZIPFS_ENV);
+        ) {
+            Files.move(traceFile, zipfs.getPath("/trace.json"));
+            copyRunInfo(zipfs, runInfo);
+            copyInputText(zipfs);
         } catch (IOException e) {
-            throw new RuntimeException("failed to write trace file", e);
+            throw new RuntimeException("failed to generate zip file", e);
         }
     }
 
-    private void writeTrace(final FileSystem zipfs, final ParsingRunTrace trace)
+    private void copyRunInfo(final FileSystem zipfs, final ParseRunInfo runInfo)
         throws IOException
     {
-        final Path path = zipfs.getPath("/trace.json");
+        final Path path = zipfs.getPath("/info.json");
 
         try (
-            final BufferedWriter writer = Files.newBufferedWriter(path,
-                StandardCharsets.UTF_8);
+            final BufferedWriter writer = Files.newBufferedWriter(path, UTF_8);
         ) {
-            MAPPER.writeValue(writer, trace);
+            MAPPER.writeValue(writer, runInfo);
             writer.flush();
         }
     }
 
-    private void writeInputText(final FileSystem zipfs)
+    private void copyInputText(final FileSystem zipfs)
         throws IOException
     {
         final Path path = zipfs.getPath("/input.txt");
-        final String text = buffer.extract(0, Integer.MAX_VALUE);
+        final int length = bufferToString(inputBuffer).length();
+
+        int start = 0;
+        String s;
+
         try (
-            final BufferedWriter writer = Files.newBufferedWriter(path,
-                StandardCharsets.UTF_8);
+            final BufferedWriter writer = Files.newBufferedWriter(path, UTF_8);
         ) {
-            writer.append(text);
+            while (start < length) {
+                // Note: relies on the fact that boundaries are adjusted
+                s = inputBuffer.extract(start, start + BUFSIZE);
+                writer.write(s);
+                start += BUFSIZE;
+            }
+
             writer.flush();
         }
+    }
+
+    private static final class EventWriter
+        implements Callable<Closeable>
+    {
+        private final JsonGenerator generator;
+        private final BlockingQueue<TraceEvent> eventQueue;
+
+        private EventWriter(final JsonGenerator generator,
+            final BlockingQueue<TraceEvent> eventQueue)
+        {
+            this.generator = generator;
+            this.eventQueue = eventQueue;
+        }
+
+        @Override
+        public Closeable call()
+            throws IOException
+        {
+            TraceEvent event;
+            generator.writeStartArray();
+            try {
+                while ((event = eventQueue.take()) != END_EVENT)
+                    generator.writeObject(event);
+                generator.writeEndArray();
+            } catch (InterruptedException ignored) {
+            }
+            return generator;
+        }
+    }
+
+    private static String bufferToString(final InputBuffer buffer)
+    {
+        final int bufsize = 4096;
+        String s;
+        final StringBuilder sb = new StringBuilder();
+
+        int len;
+        int index = 0;
+
+        do {
+            s = buffer.extract(index, index + bufsize);
+            len = s.length();
+            sb.append(s);
+            index += bufsize;
+        } while (len == bufsize);
+
+        return sb.toString();
     }
 }

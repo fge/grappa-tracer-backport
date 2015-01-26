@@ -18,6 +18,8 @@ package com.github.parboiled1.grappa.backport;
 
 import com.google.common.base.Preconditions;
 import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.SubscriberExceptionContext;
+import com.google.common.eventbus.SubscriberExceptionHandler;
 import org.parboiled.MatchHandler;
 import org.parboiled.MatcherContext;
 import org.parboiled.Rule;
@@ -51,7 +53,18 @@ public class EventBasedParseRunner<V>
     extends AbstractParseRunner<V>
     implements MatchHandler
 {
-    private final EventBus bus = new EventBus();
+    // TODO: does it need to be volatile?
+    private volatile Throwable throwable = null;
+
+    private final EventBus bus = new EventBus(new SubscriberExceptionHandler()
+    {
+        @Override
+        public void handleException(final Throwable exception,
+            final SubscriberExceptionContext context)
+        {
+                throwable = exception;
+        }
+    });
 
     public EventBasedParseRunner(final Rule rule)
     {
@@ -76,11 +89,21 @@ public class EventBasedParseRunner<V>
 
         final MatcherContext<V> rootContext
             = createRootContext(inputBuffer, this, true);
+
         bus.post(new PreParseEvent<V>(rootContext));
+
+        if (throwable != null)
+            throw new RuntimeException("parse listener error", throwable);
+
         final boolean matched = rootContext.runMatcher();
         final ParsingResult<V> result
             = createParsingResult(matched, rootContext);
+
         bus.post(new PostParseEvent<V>(result));
+
+        if (throwable != null)
+            throw new RuntimeException("parse listener error", throwable);
+
         return result;
     }
 
@@ -90,7 +113,11 @@ public class EventBasedParseRunner<V>
         final Matcher matcher = context.getMatcher();
 
         final PreMatchEvent<T> preMatchEvent = new PreMatchEvent<T>(context);
+
         bus.post(preMatchEvent);
+
+        if (throwable != null)
+            throw new RuntimeException("parse listener error", throwable);
 
         // FIXME: is there any case at all where context.getMatcher() is null?
         @SuppressWarnings("ConstantConditions")
@@ -99,7 +126,11 @@ public class EventBasedParseRunner<V>
         final MatchContextEvent<T> postMatchEvent = match
             ? new MatchSuccessEvent<T>(context)
             : new MatchFailureEvent<T>(context);
+
         bus.post(postMatchEvent);
+
+        if (throwable != null)
+            throw new RuntimeException("parse listener error", throwable);
 
         return match;
     }
