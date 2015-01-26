@@ -5,12 +5,12 @@ file LICENSE for more details.
 
 Requires Java 7 or better.
 
-The current version is **1.0.0**:
+The current version is **1.1.0**:
 
 ```groovy
 dependencies {
     compile(group: "com.github.fge", name: "grappa-tracer-backport",
-        version: "1.0.0");
+        version: "1.1.0");
 }
 ```
 
@@ -40,7 +40,7 @@ Code:
 ```java
 final MyParser parser = Parboiled.createParser(MyParser.class);
 
-final String zipPath = "/tmp/trace.zip";
+final Path zipPath = Paths.get("/tmp/trace.zip");
 final TracingParseRunnerListener<String> listener
     = new TracingParseRunnerListener<>(zipPath);
 final ParseRunner<String> runner
