@@ -5,19 +5,18 @@ file LICENSE for more details.
 
 Requires Java 7 or better.
 
-The current version is **1.1.0**:
+The current version is **1.1.1**:
 
 ```groovy
 dependencies {
     compile(group: "com.github.fge", name: "grappa-tracer-backport",
-        version: "1.1.0");
+        version: "1.1.1");
 }
 ```
 
 ## What is it
 
-This is a backport of the event-listening parse runner in grappa 2.0.x for
-grappa 1.0.x.
+This is a backport of the event-listening parse runner (new in grappa 2.0.x) for grappa 1.0.x.
 
 Included is a tracing listener which uou can use it to run your grappa
 1.0.x/parboiled1 parsers, which you can then analyze using the [GUI
@@ -44,7 +43,7 @@ final Path zipPath = Paths.get("/tmp/trace.zip");
 final TracingParseRunnerListener<String> listener
     = new TracingParseRunnerListener<>(zipPath);
 final ParseRunner<String> runner
-    = new EventBasedParseRunner(parser.theRule());
+    = new EventBasedParseRunner<>(parser.theRule());
 
 runner.registerListener(listener);
 runner.run(someInput);
