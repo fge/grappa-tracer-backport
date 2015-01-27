@@ -15,13 +15,16 @@ import org.parboiled.matchers.EmptyMatcher;
 import org.parboiled.matchers.FirstOfMatcher;
 import org.parboiled.matchers.FirstOfStringsMatcher;
 import org.parboiled.matchers.Matcher;
+import org.parboiled.matchers.MemoMismatchesMatcher;
 import org.parboiled.matchers.NothingMatcher;
 import org.parboiled.matchers.OneOrMoreMatcher;
 import org.parboiled.matchers.OptionalMatcher;
+import org.parboiled.matchers.ProxyMatcher;
 import org.parboiled.matchers.SequenceMatcher;
 import org.parboiled.matchers.StringMatcher;
 import org.parboiled.matchers.TestMatcher;
 import org.parboiled.matchers.TestNotMatcher;
+import org.parboiled.matchers.VarFramingMatcher;
 import org.parboiled.matchers.ZeroOrMoreMatcher;
 
 import javax.annotation.Nonnull;
@@ -89,6 +92,11 @@ public class MatcherTypeProvider
         addMatcherClass(TestMatcher.class, MatcherType.PREDICATE);
         addMatcherClass(TestNotMatcher.class, MatcherType.PREDICATE);
         addMatcherClass(ZeroOrMoreMatcher.class, MatcherType.COMPOSITE);
+
+
+        addMatcherClass(ProxyMatcher.class, MatcherType.COMPOSITE);
+        addMatcherClass(MemoMismatchesMatcher.class, MatcherType.COMPOSITE);
+        addMatcherClass(VarFramingMatcher.class, MatcherType.COMPOSITE);
     }
 
     /**
