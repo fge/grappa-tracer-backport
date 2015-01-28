@@ -20,67 +20,45 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
-import org.parboiled.Context;
 import org.parboiled.MatcherContext;
 import org.parboiled.matchers.Matcher;
 
 import javax.annotation.Nonnull;
 import javax.annotation.ParametersAreNonnullByDefault;
 
-/**
- * One parsing run trace event
- *
- * <p>You should normally not use this class directly. It is intended to be used
- * by an instance of a {@link TracingParseRunnerListener}.</p>
- *
- * <p>This class collects the following information about a parse event:</p>
- *
- * <ul>
- *     <li>the {@link TraceEventType event type};</li>
- *     <li>the timestamp of this event, in nanoseconds (see {@link
- *     System#nanoTime()});</li>
- *     <li>the index into the input buffer (see {@link
- *     Context#getCurrentIndex()};</li>
- *     <li>the name of the matcher;</li>
- *     <li>the matcher path;</li>
- *     <li>the match level.</li>
- * </ul>
- */
-@SuppressWarnings("TypeMayBeWeakened")
 @ParametersAreNonnullByDefault
 public final class TraceEvent
 {
+    private static final MatcherTypeProvider TYPE_PROVIDER
+        = new MatcherTypeProvider();
+
     private final TraceEventType type;
     private long nanoseconds;
     private final int index;
     private final String matcher;
     private final MatcherType matcherType;
     private final String matcherClass;
-    private final String path;
     private final int level;
 
-    public static TraceEvent before(final MatcherContext<?> context,
-        final MatcherType matcherType)
+    public static TraceEvent before(final MatcherContext<?> context)
     {
         return new TraceEvent(TraceEventType.BEFORE_MATCH,
-            context.getCurrentIndex(), context.getMatcher(), matcherType,
-            context.getPath().toString(), context.getLevel());
+            context.getCurrentIndex(), context.getMatcher(),
+            context.getLevel());
     }
 
-    public static TraceEvent failure(final MatcherContext<?> context,
-        final MatcherType matcherType)
+    public static TraceEvent failure(final MatcherContext<?> context)
     {
         return new TraceEvent(TraceEventType.MATCH_FAILURE,
-            context.getCurrentIndex(), context.getMatcher(), matcherType,
-            context.getPath().toString(), context.getLevel());
+            context.getCurrentIndex(), context.getMatcher(),
+            context.getLevel());
     }
 
-    public static TraceEvent success(final MatcherContext<?> context,
-        final MatcherType matcherType)
+    public static TraceEvent success(final MatcherContext<?> context)
     {
         return new TraceEvent(TraceEventType.MATCH_SUCCESS,
-            context.getCurrentIndex(), context.getMatcher(), matcherType,
-            context.getPath().toString(), context.getLevel());
+            context.getCurrentIndex(), context.getMatcher(),
+            context.getLevel());
     }
 
     @JsonCreator
@@ -90,7 +68,6 @@ public final class TraceEvent
         @JsonProperty("matcher") final String matcher,
         @JsonProperty("matcherClass") final String matcherClass,
         @JsonProperty("matcherType") final MatcherType matcherType,
-        @JsonProperty("path") final String path,
         @JsonProperty("level") final int level)
     {
         this.type = type;
@@ -99,28 +76,25 @@ public final class TraceEvent
         this.matcher = matcher;
         this.matcherType = matcherType;
         this.matcherClass = matcherClass;
-        this.path = path;
         this.level = level;
     }
 
     @JsonIgnore
     private TraceEvent(final TraceEventType type, final int index,
-        final Matcher matcher, final MatcherType matcherType,
-        final String path, final int level)
+        final Matcher matcher, final int level)
     {
         this.type = type;
         this.index = index;
         this.matcher = matcher.toString();
-        this.path = path;
         this.level = level;
 
         final String name = matcher.getClass().getSimpleName();
         matcherClass = name.isEmpty() ? "(anonymous)" : name;
-        this.matcherType = matcherType;
+        matcherType = TYPE_PROVIDER.getType(matcher.getClass());
     }
 
     @JsonIgnore
-    public TraceEvent(final TraceEventType type, final MatcherType matcherType,
+    public TraceEvent(final TraceEventType type,
         final MatcherContext<?> context)
     {
         nanoseconds = System.nanoTime();
@@ -131,8 +105,7 @@ public final class TraceEvent
         final String name = m.getClass().getSimpleName();
         matcher = m.toString();
         matcherClass = name.isEmpty() ? "(anonymous)" : name;
-        this.matcherType = matcherType;
-        path = context.getPath().toString();
+        matcherType = TYPE_PROVIDER.getType(m.getClass());
         level = context.getLevel();
     }
 
@@ -171,11 +144,6 @@ public final class TraceEvent
         return matcherClass;
     }
 
-    public String getPath()
-    {
-        return path;
-    }
-
     public int getLevel()
     {
         return level;
@@ -192,7 +160,6 @@ public final class TraceEvent
             .add("matcher", matcher)
             .add("matcherClass", matcherClass)
             .add("matcherType", matcherType)
-            .add("path", path)
             .add("level", level)
             .toString();
     }
