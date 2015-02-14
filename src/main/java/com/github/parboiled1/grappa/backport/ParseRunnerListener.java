@@ -43,7 +43,7 @@ import javax.annotation.ParametersAreNonnullByDefault;
  *
  * @param <V> type parameter of the running parser
  *
- * @see EventBasedParseRunner
+ * @see EventBasedParseRunner#registerListener(ParseRunnerListener)
  */
 @ParametersAreNonnullByDefault
 public class ParseRunnerListener<V>

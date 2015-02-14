@@ -1,5 +1,6 @@
 package com.github.parboiled1.grappa.backport.tracer;
 
+import com.github.parboiled1.grappa.backport.EventBasedParseRunner;
 import com.github.parboiled1.grappa.backport.ParseRunnerListener;
 import com.github.parboiled1.grappa.backport.buffers.CharSequenceInputBuffer;
 import com.github.parboiled1.grappa.backport.buffers.InputBuffer;
@@ -29,6 +30,22 @@ import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+/**
+ * The tracing listener
+ *
+ * <p>This listener is intended to be used with the <a
+ * href="https://github.com/fge/grappa-debugger">debugger</a>. It collects all
+ * parsing nodes and matcher information plus:</p>
+ *
+ * <ul>
+ *     <li>the input text,</li>
+ *     <li>other, generic parsing run information (date, time spent etc).</li>
+ * </ul>
+ *
+ * @param <V> parameter type of the parser
+ *
+ * @see EventBasedParseRunner#registerListener(ParseRunnerListener)
+ */
 @ParametersAreNonnullByDefault
 public final class TracingListener<V>
     extends ParseRunnerListener<V>

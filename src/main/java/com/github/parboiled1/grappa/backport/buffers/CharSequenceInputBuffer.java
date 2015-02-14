@@ -47,6 +47,8 @@ import java.util.regex.Pattern;
  * <p>Among other things, this means you can use this package on very large
  * files using <a href="https://github.com/fge/largetext">largetext</a>, which
  * implements {@link CharSequence} over multi-gigabyte files.</p>
+ *
+ * <p>This is a backport from grappa 2.0.x.</p>
  */
 @Immutable
 public final class CharSequenceInputBuffer

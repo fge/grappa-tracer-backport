@@ -20,6 +20,8 @@ import org.parboiled.matchers.ActionMatcher;
 
 /**
  * Enumeration of the different matcher types
+ *
+ * <p>This is a backport from grappa 2.0.x.</p>
  */
 public enum MatcherType
 {

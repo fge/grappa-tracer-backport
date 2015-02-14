@@ -50,6 +50,33 @@ import javax.annotation.ParametersAreNonnullByDefault;
  * events and builds a trace file for use with <a
  * href="https://github.com/fge/grappa-debugger">the GUI debugger</a>.</p>
  *
+ * * <p>In order to create your own listener, you extend a {@link
+ * ParseRunnerListener} and override the methods you need; once done, you
+ * initialize it and pass it to an instance of {@link EventBasedParseRunner}
+ * <em>before</em> you parse your input.</p>
+ *
+ * <p>For instance, if you have a class named {@code MyParserListener}, you will
+ * do this:</p>
+ *
+ * <pre>
+ *     // Create the parser
+ *     final MyParser parser = Parboiled.create(MyParser.class);
+ *
+ *     // Create the listener
+ *     final MyParserListener&lt;Foo&gt; listener
+ *         = new MyParserListener&lt;&gt;();
+ *
+ *     // Create the parse runner
+ *     final EventBasedParseRunner&lt;Foo&gt; runner
+ *         = new EventBasedParseRunner&lt;&gt;(parser.theRule());
+ *
+ *     // Register the listener
+ *     runner.registerListener(listener);
+ *
+ *     // Run
+ *     runner.run(someInput);
+ * </pre>
+ *
  * @see ParseRunnerListener
  * @see EventBus
  */
@@ -96,7 +123,7 @@ public class EventBasedParseRunner<V>
         final MatcherContext<V> rootContext
             = createRootContext(inputBuffer, this, true);
 
-        bus.post(new PreParseEvent<V>(rootContext));
+        bus.post(new PreParseEvent<>(rootContext));
 
         if (throwable != null)
             throw new RuntimeException("parse listener error", throwable);
@@ -105,7 +132,7 @@ public class EventBasedParseRunner<V>
         final ParsingResult<V> result
             = createParsingResult(matched, rootContext);
 
-        bus.post(new PostParseEvent<V>(result));
+        bus.post(new PostParseEvent<>(result));
 
         if (throwable != null)
             throw new RuntimeException("parse listener error", throwable);
@@ -118,7 +145,7 @@ public class EventBasedParseRunner<V>
     {
         final Matcher matcher = context.getMatcher();
 
-        final PreMatchEvent<T> preMatchEvent = new PreMatchEvent<T>(context);
+        final PreMatchEvent<T> preMatchEvent = new PreMatchEvent<>(context);
 
         bus.post(preMatchEvent);
 
@@ -130,8 +157,8 @@ public class EventBasedParseRunner<V>
         final boolean match = matcher.match(context);
 
         final MatchContextEvent<T> postMatchEvent = match
-            ? new MatchSuccessEvent<T>(context)
-            : new MatchFailureEvent<T>(context);
+            ? new MatchSuccessEvent<>(context)
+            : new MatchFailureEvent<>(context);
 
         bus.post(postMatchEvent);
 

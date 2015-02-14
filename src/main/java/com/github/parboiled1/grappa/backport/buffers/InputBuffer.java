@@ -22,8 +22,10 @@ import org.parboiled.support.Position;
 
 /**
  * Abstraction of a simple char[] buffer holding the input text to be parsed.
+ *
+ * <p>This is a backport from grappa 2.0.x (for {@link #getLineRange(int)} and
+ * {@link #length()}).</p>
  */
-// TODO: it furiously resembles a CharSequence and should use that
 public interface InputBuffer
 {
     /**
