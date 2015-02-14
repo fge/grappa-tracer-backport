@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.parboiled1.grappa.backport;
+package com.github.parboiled1.grappa.backport.type;
 
 import org.parboiled.matchers.ActionMatcher;
 

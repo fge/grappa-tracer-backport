@@ -1,4 +1,4 @@
-package com.github.parboiled1.grappa.backport;
+package com.github.parboiled1.grappa.backport.type;
 
 import com.github.parboiled1.grappa.matchers.join.JoinMatcher;
 import com.github.parboiled1.grappa.matchers.trie.TrieMatcher;

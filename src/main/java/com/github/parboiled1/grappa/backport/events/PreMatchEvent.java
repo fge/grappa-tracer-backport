@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-package com.github.parboiled1.grappa.backport;
+package com.github.parboiled1.grappa.backport.events;
 
 import org.parboiled.MatcherContext;
 
 /**
- * Event posted when a match has failed
+ * Event posted before a rule attempts a match
  *
  * @param <V> type parameter of the matching context
  */
-public final class MatchFailureEvent<V>
+public final class PreMatchEvent<V>
     extends MatchContextEvent<V>
 {
-    public MatchFailureEvent(final MatcherContext<V> context)
+    public PreMatchEvent(final MatcherContext<V> context)
     {
         super(context);
     }

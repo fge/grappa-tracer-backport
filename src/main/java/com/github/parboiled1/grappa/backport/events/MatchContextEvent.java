@@ -14,31 +14,35 @@
  * limitations under the License.
  */
 
-package com.github.parboiled1.grappa.backport;
+package com.github.parboiled1.grappa.backport.events;
 
-import javax.annotation.Nonnull;
+import org.parboiled.MatcherContext;
 
 /**
- * Types of match events
+ * Base class for a parsing match event
+ *
+ * @param <V> type parameter of the matching context
+ *
+ * @see PreMatchEvent
+ * @see MatchFailureEvent
+ * @see MatchSuccessEvent
  */
-public enum TraceEventType
+public abstract class MatchContextEvent<V>
 {
-    BEFORE_MATCH("before match"),
-    MATCH_SUCCESS("match success"),
-    MATCH_FAILURE("match failure"),
-    ;
+    protected final MatcherContext<V> context;
 
-    private final String description;
-
-    TraceEventType(final String description)
+    protected MatchContextEvent(final MatcherContext<V> context)
     {
-        this.description = description;
+        this.context = context;
     }
 
-    @Override
-    @Nonnull
-    public String toString()
+    /**
+     * Return the context associated with this parse event
+     *
+     * @return the context
+     */
+    public final MatcherContext<V> getContext()
     {
-        return description;
+        return context;
     }
 }

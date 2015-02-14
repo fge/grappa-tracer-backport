@@ -35,8 +35,6 @@ repositories {
 dependencies {
     provided(group: "com.google.code.findbugs", name: "jsr305",
         version: "3.0.0");
-    compile(group: "com.fasterxml.jackson.core", name: "jackson-databind",
-        version: "2.5.0");
     compile(group: "com.github.parboiled1", name: "grappa", version: "1.0.4");
 }
 
