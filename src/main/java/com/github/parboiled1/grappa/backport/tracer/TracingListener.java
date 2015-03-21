@@ -17,6 +17,7 @@ import org.parboiled.matchers.Matcher;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.io.BufferedWriter;
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.FileSystem;
@@ -104,7 +105,7 @@ public final class TracingListener<V>
      * The path to the zip, and the parse tree node file
      */
     private final Path zipPath;
-    private final Path nodeFile;
+    private final FileSystem zipfs;
     private final BufferedWriter writer;
     private final StringBuilder sb = new StringBuilder();
 
@@ -114,8 +115,9 @@ public final class TracingListener<V>
         this.zipPath = zipPath;
         if (delete)
             Files.deleteIfExists(zipPath);
-        nodeFile = Files.createTempFile("nodes", ".csv");
-        writer = Files.newBufferedWriter(nodeFile, UTF_8);
+        final URI uri = URI.create("jar:" + zipPath.toUri());
+        zipfs = FileSystems.newFileSystem(uri, ENV);
+        writer = Files.newBufferedWriter(zipfs.getPath(NODE_PATH), UTF_8);
     }
 
     @Override
@@ -241,21 +243,18 @@ public final class TracingListener<V>
             throw cleanup(e);
         }
 
-        final URI uri = URI.create("jar:" + zipPath.toUri());
-
         try (
-            final FileSystem zipfs = FileSystems.newFileSystem(uri, ENV);
+            final Closeable closeable = zipfs;
         ) {
-            Files.move(nodeFile, zipfs.getPath(NODE_PATH));
-            copyInputText(zipfs);
-            copyMatcherInfo(zipfs);
-            copyParseInfo(zipfs);
+            copyInputText();
+            copyMatcherInfo();
+            copyParseInfo();
         } catch (IOException e) {
             throw cleanup(e);
         }
     }
 
-    private void copyInputText(final FileSystem zipfs)
+    private void copyInputText()
         throws IOException
     {
         final Path path = zipfs.getPath(INPUT_TEXT_PATH);
@@ -271,7 +270,7 @@ public final class TracingListener<V>
         }
     }
 
-    private void copyMatcherInfo(final FileSystem zipfs)
+    private void copyMatcherInfo()
     {
         final Path path = zipfs.getPath(MATCHERS_PATH);
 
@@ -294,7 +293,7 @@ public final class TracingListener<V>
     }
 
     // MUST be called after copyInputText!
-    private void copyParseInfo(final FileSystem zipfs)
+    private void copyParseInfo()
         throws IOException
     {
         final Path path = zipfs.getPath(INFO_PATH);
@@ -319,16 +318,17 @@ public final class TracingListener<V>
     {
         final GrappaException ret
             = new GrappaException("failed to write event", e);
+
         try {
             writer.close();
-        } catch (IOException e2) {
-            ret.addSuppressed(e2);
+        } catch (IOException e1) {
+            ret.addSuppressed(e1);
         }
 
         try {
-            Files.deleteIfExists(nodeFile);
-        } catch (IOException e3) {
-            ret.addSuppressed(e3);
+            zipfs.close();
+        } catch (IOException e2) {
+            ret.addSuppressed(e2);
         }
 
         return ret;
