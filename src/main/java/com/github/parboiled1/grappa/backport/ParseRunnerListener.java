@@ -21,7 +21,7 @@ import com.github.parboiled1.grappa.backport.events.MatchSuccessEvent;
 import com.github.parboiled1.grappa.backport.events.PostParseEvent;
 import com.github.parboiled1.grappa.backport.events.PreMatchEvent;
 import com.github.parboiled1.grappa.backport.events.PreParseEvent;
-import com.google.common.eventbus.Subscribe;
+import sonarhack.com.google.common.eventbus.Subscribe;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 

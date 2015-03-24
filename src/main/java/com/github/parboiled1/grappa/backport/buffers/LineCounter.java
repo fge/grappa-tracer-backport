@@ -16,9 +16,9 @@
 
 package com.github.parboiled1.grappa.backport.buffers;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Range;
+import sonarhack.com.google.common.annotations.VisibleForTesting;
+import sonarhack.com.google.common.collect.Lists;
+import sonarhack.com.google.common.collect.Range;
 import org.parboiled.support.Position;
 
 import javax.annotation.ParametersAreNonnullByDefault;

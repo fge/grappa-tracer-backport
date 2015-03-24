@@ -16,10 +16,10 @@
 
 package com.github.parboiled1.grappa.backport.buffers;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Range;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import sonarhack.com.google.common.base.Preconditions;
+import sonarhack.com.google.common.collect.Range;
+import sonarhack.com.google.common.util.concurrent.Futures;
+import sonarhack.com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.parboiled.support.Chars;
 import org.parboiled.support.IndexRange;
 import org.parboiled.support.Position;
